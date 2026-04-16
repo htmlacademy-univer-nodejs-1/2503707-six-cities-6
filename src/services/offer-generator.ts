@@ -1,5 +1,5 @@
 import { Offer } from '../types/offer.type.js';
-import { City } from '../types/city,type.js';
+import { City } from "../types/city.type.js";
 import { RandomGenerator } from '../utils/random-generator.js';
 
 export class OfferGenerator {

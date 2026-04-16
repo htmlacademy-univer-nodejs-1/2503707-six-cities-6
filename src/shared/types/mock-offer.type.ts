@@ -1,16 +1,15 @@
-import { City } from "./city.type.js";
-
-export type Offer = {
+export type MockOffer = {
+  id: number;
   title: string;
   description: string;
   postDate: string;
-  city: City;
+  city: string;
   previewImage: string;
   images: string[];
   isPremium: boolean;
   isFavorite: boolean;
   rating: number;
-  type: 'apartment' | 'house' | 'room' | 'hotel';
+  type: string;
   rooms: number;
   guests: number;
   price: number;
