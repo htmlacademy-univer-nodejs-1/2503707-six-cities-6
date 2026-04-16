@@ -18,14 +18,12 @@ export const runCLI = async (args: string[], container: Container): Promise<void
 
   const showHelp = () => {
     console.log(chalk.blue(`
-Доступные команды:
+      Доступные команды:
 
---help                                        Показать список команд
---version                                     Показать версию приложения
---import <file> <uri> <salt>                   Импортировать данные (uri - MongoDB connection string)
---import <file> <login> <password> <host>     Импортировать данные (отдельные параметры)
-<dbname> <salt> [port]
---generate <n> <filepath> <url>               Сгенерировать тестовые данные
+      --help                              Показать список команд
+      --version                           Показать версию приложения
+      --import <file>                     Импортировать данные из TSV файла
+      --generate <n> <filepath> <url>     Сгенерировать тестовые данные
     `));
   };
 

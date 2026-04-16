@@ -12,7 +12,6 @@ export function loadConfig(): Config {
     databaseUrl: {
       doc: 'The data base server address (URL or IP).',
       format: (val: string) => {
-        // Simple URL validation
         try {
           new URL(val);
         } catch {

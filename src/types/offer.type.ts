@@ -1,4 +1,4 @@
-import { City } from "./city.type.js";
+import { City } from './city,type.js';
 
 export type Offer = {
   title: string;
