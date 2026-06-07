@@ -24,7 +24,7 @@ export class DefaultCommentService implements CommentService, DocumentExistsServ
 
   public async create(dto: CreateCommentDto): Promise<DocumentType<CommentEntity>> {
     const comment = await this.commentModel.create(dto);
-    await this.updateOfferRating(dto.offerId);
+    await this.updateOfferRating(dto.offerId as string);
     await this.offerModel.findByIdAndUpdate(dto.offerId, {'$inc': {commentCount: 1}});
     this.logger.info(`New comment created for offer ${dto.offerId}`);
     return comment.populate('userId');

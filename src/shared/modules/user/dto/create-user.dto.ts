@@ -1,4 +1,4 @@
-import { IsString, Length, IsOptional, IsIn } from 'class-validator';
+import { IsString, Length, IsOptional, IsBoolean } from 'class-validator';
 
 export class CreateUserDto {
   @IsString()
@@ -11,11 +11,11 @@ export class CreateUserDto {
 
   @IsOptional()
   @IsString()
-    avatarPath?: string;
+    avatarUrl?: string;
 
-  @IsString()
-  @IsIn(['ordinary', 'pro'])
-    type!: 'ordinary' | 'pro';
+  @IsOptional()
+  @IsBoolean()
+    isPro?: boolean;
 
   @IsString()
   @Length(6, 12)

@@ -6,19 +6,20 @@ export function createOffer(offerData: string): Offer {
     description,
     createdDate,
     image,
-    type,
+    isPro,
     price,
     categories,
     name,
     email,
-    avatarPath
+    avatarPath,
+    type
   ] = offerData.replace('\n', '').split('\t');
 
   const user = {
     email,
     name,
     avatarPath,
-    type: type as 'ordinary' | 'pro',
+    isPro: isPro === 'true',
   };
 
   return {
@@ -27,7 +28,7 @@ export function createOffer(offerData: string): Offer {
     image,
     user,
     postDate: new Date(createdDate),
-    type: OfferType[type as 'Buy' | 'Sell'],
+    type: type as OfferType,
     price: Number.parseInt(price, 10),
     categories: categories.split(';')
       .map((categoryName) => ({name: categoryName})),

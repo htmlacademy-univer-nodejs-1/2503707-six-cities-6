@@ -6,17 +6,32 @@ export class AuthGuardMiddleware {
 
   public execute = async (req: Request, res: Response, next: NextFunction) => {
     try {
+      const cookieToken = req.cookies?.token as string | undefined;
       const authHeader = req.headers.authorization;
+      const tokenHeader = req.headers['x-token'];
 
-      if (!authHeader?.startsWith('Bearer ')) {
-        res.status(StatusCodes.UNAUTHORIZED).json({ message: 'Missing or invalid authorization header' });
+      let token: string | undefined;
+
+      if (cookieToken) {
+        token = cookieToken;
+      } else if (authHeader?.startsWith('Bearer ')) {
+        token = authHeader.substring(7);
+      } else if (typeof tokenHeader === 'string') {
+        token = tokenHeader;
+      } else {
+        token = undefined;
       }
 
-      const token = authHeader!.substring(7);
+      if (!token) {
+        res.status(StatusCodes.UNAUTHORIZED).json({ message: 'Missing or invalid authorization token' });
+        return;
+      }
+
       const payload = await this.jwtService.verifyToken(token);
 
       if (!payload) {
         res.status(StatusCodes.UNAUTHORIZED).json({ message: 'Invalid or expired token' });
+        return;
       }
 
       req.user = payload;

@@ -1,4 +1,3 @@
-// src/shared/controllers/user.controller.ts
 import { Router, Request, Response } from 'express';
 import { inject, injectable } from 'inversify';
 import { BaseController, Controller } from './index.js';
@@ -11,6 +10,7 @@ import { UserService } from '../modules/user/user-service.interface.js';
 import { Config, RestSchema } from '../libs/config/index.js';
 import { FileUploadMiddleware } from '../middlewares/file-upload.middleware.js';
 import { JwtTokenService } from '../libs/JWT/jwt-token.service.js';
+import { AuthService } from '../modules/auth/auth.service.interface.js';
 
 @injectable()
 export class UserController extends BaseController implements Controller {
@@ -20,7 +20,8 @@ export class UserController extends BaseController implements Controller {
   constructor(
     @inject(Component.UserService) private readonly userService: UserService,
     @inject(Component.Config) private readonly config: Config<RestSchema>,
-    @inject(Component.JwtTokenService) private readonly jwtTokenService: JwtTokenService
+    @inject(Component.JwtTokenService) private readonly jwtTokenService: JwtTokenService,
+    @inject(Component.AuthService) private readonly authService: AuthService
   ) {
     super();
     this.router = Router();
@@ -38,7 +39,7 @@ export class UserController extends BaseController implements Controller {
     const authGuard = new AuthGuardMiddleware(this.jwtTokenService);
 
     this.registerRoute({
-      path: '/',
+      path: '/register',
       method: 'post',
       handler: asyncHandler((req, res) => this.create(req, res)),
       middlewares: [validateCreateUserDto],
@@ -55,14 +56,14 @@ export class UserController extends BaseController implements Controller {
       path: '/logout',
       method: 'post',
       handler: asyncHandler((req, res) => this.logout(req, res)),
-      middlewares: [validateObjectId, authGuard, checkUserExists],
+      middlewares: [authGuard],
     });
 
     this.registerRoute({
       path: '/profile',
       method: 'get',
       handler: asyncHandler((req, res) => this.show(req, res)),
-      middlewares: [validateObjectId, authGuard, checkUserExists],
+      middlewares: [authGuard],
     });
 
     this.registerRoute({
@@ -91,7 +92,7 @@ export class UserController extends BaseController implements Controller {
       message: 'Avatar uploaded successfully',
       avatarUrl,
       user: {
-        id: updatedUser.id,
+        userId: updatedUser.id,
         name: updatedUser.name,
         email: updatedUser.email,
         avatar: updatedUser.avatar,
@@ -100,26 +101,58 @@ export class UserController extends BaseController implements Controller {
   }
 
   public async create(req: Request, res: Response): Promise<void> {
-    const { name, email, avatarPath, type, password } = req.body;
-    const user = { name, email, avatarPath, type };
-    this.sendCreated(res, user);
+    const dto: CreateUserDto = req.body;
+    const salt = this.config.get('SALT');
+
+    const user = await this.userService.create(dto, salt);
+
+    this.sendCreated(res, {
+      id: user.id ?? user._id?.toString(),
+      email: user.email,
+      name: user.name,
+      avatarUrl: user.avatar,
+      isPro: user.isPro,
+    });
   }
 
   public async login(req: Request, res: Response): Promise<void> {
-    this.sendOk(res, { token: 'mock-jwt-token' });
+    const dto: LoginUserDto = req.body;
+    const user = await this.authService.login(dto.email, dto.password);
+
+    if (!user) {
+      this.sendNotFound(res, 'Invalid credentials');
+      return;
+    }
+
+    const token = await this.authService.authenticate(user);
+
+    // Set HTTP-only cookie
+    const secure = process.env.NODE_ENV === 'production';
+    res.cookie('token', token, { httpOnly: true, sameSite: 'lax', secure });
+
+    this.sendOk(res, { message: 'Authenticated' });
   }
 
   public async logout(req: Request, res: Response): Promise<void> {
+    res.clearCookie('token');
     this.sendOk(res, { message: 'Logged out successfully' });
   }
 
   public async show(req: Request, res: Response): Promise<void> {
-    const user = {
-      name: 'John Doe',
-      email: 'john@example.com',
-      avatarPath: '/avatars/john.jpg',
-      type: 'ordinary',
-    };
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      this.sendUnauthorized(res, 'Invalid or missing token');
+      return;
+    }
+
+    const user = await this.userService.findById(userId);
+
+    if (!user) {
+      this.sendNotFound(res, 'User not found');
+      return;
+    }
+
     this.sendOk(res, user);
   }
 }

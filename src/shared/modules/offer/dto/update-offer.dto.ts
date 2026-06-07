@@ -1,7 +1,7 @@
 import {
   IsString, Length, IsDateString, IsEnum, IsBoolean, IsArray, ArrayMinSize, ArrayMaxSize, IsInt, Min, Max, IsNumber, ValidateNested, IsOptional, IsMongoId,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { OfferType } from '../../../types/index.js';
 
 export class LocationDto {
@@ -22,13 +22,15 @@ export class UpdateOfferDto {
   @IsOptional() @IsDateString()
     postDate?: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => typeof value === 'object' && value !== null ? value.name : value)
     city?: string;
 
   @IsOptional() @IsString()
     previewImage?: string;
 
-  @IsOptional() @IsArray() @ArrayMinSize(6) @ArrayMaxSize(6) @IsString({ each: true })
+  @IsOptional() @IsArray() @ArrayMaxSize(6) @IsString({ each: true })
     images?: string[];
 
   @IsOptional() @IsBoolean()
@@ -44,9 +46,11 @@ export class UpdateOfferDto {
     type?: OfferType;
 
   @IsOptional() @IsInt() @Min(1) @Max(8)
+  @Transform(({ value, obj }) => value ?? obj.bedrooms)
     rooms?: number;
 
   @IsOptional() @IsInt() @Min(1) @Max(10)
+  @Transform(({ value, obj }) => value ?? obj.maxAdults)
     guests?: number;
 
   @IsOptional() @IsInt() @Min(100) @Max(100000)

@@ -56,7 +56,6 @@ export class ImportCommand implements Command {
 
     await this.offerService.create({
       categories,
-      authorId: user.id,
       title: offer.title,
       description: offer.description,
       city: 'Paris',
@@ -75,7 +74,7 @@ export class ImportCommand implements Command {
         latitude: 48.8566,
         longitude: 2.3522
       }
-    });
+    }, user.id);
 
   }
 

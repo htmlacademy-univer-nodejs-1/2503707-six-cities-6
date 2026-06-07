@@ -9,6 +9,15 @@ import { UpdateOfferDto } from '../modules/offer/dto/update-offer.dto.js';
 import { Component } from '../types/index.js';
 import { JwtTokenService } from '../libs/JWT/jwt-token.service.js';
 
+const CITY_LOCATION: Record<string, { latitude: number; longitude: number }> = {
+  Paris: { latitude: 48.85661, longitude: 2.351499 },
+  Cologne: { latitude: 50.938361, longitude: 6.959974 },
+  Brussels: { latitude: 50.846557, longitude: 4.351697 },
+  Amsterdam: { latitude: 52.37454, longitude: 4.897976 },
+  Hamburg: { latitude: 53.550341, longitude: 10.000654 },
+  Dusseldorf: { latitude: 51.225402, longitude: 6.776313 },
+};
+
 @injectable()
 export class OfferController extends BaseController implements Controller {
   public router: Router;
@@ -29,252 +38,241 @@ export class OfferController extends BaseController implements Controller {
     const checkOfferExists = new DocumentExistsMiddleware('offerId', this.offerService);
     const authGuard = new AuthGuardMiddleware(this.jwtTokenService);
 
-    // GET /offers
+    // GET /hotels
     this.registerRoute({
-      path: '/',
+      path: '/hotels',
       method: 'get',
-      handler: (req, res) => this.index(req, res),
+      handler: asyncHandler((req, res) => this.index(req, res)),
     });
 
-    // POST /offers
+    // POST /hotels
     this.registerRoute({
-      path: '/',
+      path: '/hotels',
       method: 'post',
-      handler: (req, res) => this.create(req, res),
-      middlewares: [validateCreateOfferDto],
+      handler: asyncHandler((req, res) => this.create(req, res)),
+      middlewares: [validateCreateOfferDto, authGuard],
     });
 
-    // GET /offers/premium/:city
+    // GET /premium
     this.registerRoute({
-      path: '/premium/:city',
+      path: '/premium',
       method: 'get',
-      handler: (req, res) => this.getPremiumOffers(req, res),
+      handler: asyncHandler((req, res) => this.getPremiumOffers(req, res)),
     });
 
-    // GET /offers/favorite
+    // GET /favorite
     this.registerRoute({
       path: '/favorite',
       method: 'get',
-      handler: (req, res) => this.getFavoriteOffers(req, res),
+      handler: asyncHandler((req, res) => this.getFavoriteOffers(req, res)),
       middlewares: [authGuard]
     });
 
-    // POST /offers/favorite/:offerId
+    // POST /favorite/:offerId/:status
     this.registerRoute({
-      path: '/favorite/:offerId',
+      path: '/favorite/:offerId/:status',
       method: 'post',
-      handler: (req, res) => this.addToFavorite(req, res),
+      handler: asyncHandler((req, res) => this.toggleFavorite(req, res)),
       middlewares: [validateObjectId, authGuard, checkOfferExists],
     });
 
-    // DELETE /offers/favorite/:offerId
+    // DELETE /favorite/:offerId
     this.registerRoute({
       path: '/favorite/:offerId',
       method: 'delete',
-      handler: (req, res) => this.removeFromFavorite(req, res),
+      handler: asyncHandler((req, res) => this.removeFromFavorite(req, res)),
       middlewares: [validateObjectId, authGuard, checkOfferExists],
     });
 
-    // GET /offers/:offerId
+    // GET /hotels/:offerId
     this.registerRoute({
-      path: '/:offerId',
+      path: '/hotels/:offerId',
       method: 'get',
-      handler: (req, res) => this.show(req, res),
+      handler: asyncHandler((req, res) => this.show(req, res)),
       middlewares: [validateObjectId, checkOfferExists],
     });
 
-    // PUT /offers/:offerId
+    // PATCH /hotels/:offerId
     this.registerRoute({
-      path: '/:offerId',
-      method: 'put',
-      handler: (req, res) => this.update(req, res),
+      path: '/hotels/:offerId',
+      method: 'patch',
+      handler: asyncHandler((req, res) => this.update(req, res)),
       middlewares: [validateObjectId, validateUpdateOfferDto, authGuard, checkOfferExists],
     });
 
-    // DELETE /offers/:offerId
+    // DELETE /hotels/:offerId
     this.registerRoute({
-      path: '/:offerId',
+      path: '/hotels/:offerId',
       method: 'delete',
-      handler: (req, res) => this.delete(req, res),
+      handler: asyncHandler((req, res) => this.delete(req, res)),
       middlewares: [validateObjectId, authGuard, checkOfferExists],
     });
   }
 
 
-  public index(req: Request, res: Response): void {
+  public async index(req: Request, res: Response): Promise<void> {
     const limit = req.query.limit ? Number(req.query.limit) : 60;
-
-    const offers = [
-      {
-        id: '1',
-        title: 'Cozy apartment in Paris',
-        description: 'Beautiful and comfortable apartment',
-        createdAt: new Date().toISOString(),
-        city: {
-          name: 'Paris',
-          location: { latitude: 48.8566, longitude: 2.3522 },
-        },
-        previewPath: '/preview.jpg',
-        images: ['/img1.jpg', '/img2.jpg', '/img3.jpg', '/img4.jpg', '/img5.jpg', '/img6.jpg'],
-        isPremium: true,
-        isFavorite: false,
-        rating: 4.8,
-        type: 'apartment',
-        roomsCount: 2,
-        guestsCount: 4,
-        price: 120,
-        conveniences: ['WiFi', 'Breakfast'],
-        author: {
-          name: 'John Doe',
-          email: 'john@example.com',
-          avatarPath: '/avatar.jpg',
-          type: 'pro',
-        },
-        commentsCount: 5,
-        coordinates: { latitude: 48.8566, longitude: 2.3522 },
-      },
-    ];
-
-    this.sendOk(res, offers);
+    const offers = await this.offerService.find(limit);
+    this.sendOk(res, offers.map((offer) => this.toResponse(offer)));
   }
 
-  public create(req: Request, res: Response): void {
-    const offerData = req.body;
+  public async create(req: Request, res: Response): Promise<void> {
+    const offerData: CreateOfferDto = req.body;
+    const userId = req.user?.userId;
 
-    const newOffer = {
-      id: '2',
-      ...offerData,
-      createdAt: new Date().toISOString(),
-      isFavorite: false,
-      rating: 0,
-      author: {
-        name: 'Current User',
-        email: 'user@example.com',
-        type: 'ordinary',
-      },
-      commentsCount: 0,
-    };
+    if (!userId) {
+      this.sendUnauthorized(res, 'User not authenticated');
+      return;
+    }
 
-    this.sendCreated(res, newOffer);
+    const newOffer = await this.offerService.create(offerData, userId);
+
+    this.sendCreated(res, this.toResponse(newOffer));
   }
 
-  public show(req: Request, res: Response): void {
+  public async show(req: Request, res: Response): Promise<void> {
     const { offerId } = req.params;
+    const offer = await this.offerService.findById(offerId as string);
 
-    const offer = {
-      id: offerId,
-      title: 'Cozy apartment',
-      description: 'Beautiful apartment',
-      createdAt: new Date().toISOString(),
-      city: {
-        name: 'Paris',
-        location: { latitude: 48.8566, longitude: 2.3522 },
-      },
-      previewPath: '/preview.jpg',
-      images: ['/img1.jpg', '/img2.jpg', '/img3.jpg', '/img4.jpg', '/img5.jpg', '/img6.jpg'],
-      isPremium: true,
-      isFavorite: false,
-      rating: 4.8,
-      type: 'apartment',
-      roomsCount: 2,
-      guestsCount: 4,
-      price: 120,
-      conveniences: ['WiFi', 'Breakfast'],
-      author: {
-        name: 'John Doe',
-        email: 'john@example.com',
-        avatarPath: '/avatar.jpg',
-        type: 'pro',
-      },
-      commentsCount: 5,
-      coordinates: { latitude: 48.8566, longitude: 2.3522 },
-    };
+    if (!offer) {
+      this.sendNotFound(res, 'Offer not found');
+      return;
+    }
 
-    this.sendOk(res, offer);
+    this.sendOk(res, this.toResponse(offer));
   }
 
-  public update(req: Request, res: Response): void {
+  public async update(req: Request, res: Response): Promise<void> {
     const { offerId } = req.params;
-    const updateData = req.body;
+    const updateData: UpdateOfferDto = req.body;
+    const userId = req.user?.userId;
 
-    // Mock response
-    const updatedOffer = {
-      id: offerId,
-      ...updateData,
-      createdAt: new Date().toISOString(),
-      isFavorite: false,
-      rating: 4.8,
-      author: {
-        name: 'Current User',
-        email: 'user@example.com',
-        type: 'ordinary',
-      },
-      commentsCount: 5,
-    };
+    if (!userId) {
+      this.sendUnauthorized(res, 'User not authenticated');
+      return;
+    }
 
-    this.sendOk(res, updatedOffer);
+    const offer = await this.offerService.findById(offerId as string);
+    if (!offer) {
+      this.sendNotFound(res, 'Offer not found');
+      return;
+    }
+
+    if (offer.authorId._id.toString() !== userId) {
+      this.sendForbidden(res, 'You can only update your own offers');
+      return;
+    }
+
+    const updatedOffer = await this.offerService.updateById(offerId as string, updateData);
+    this.sendOk(res, updatedOffer ? this.toResponse(updatedOffer) : null);
   }
 
-  public delete(req: Request, res: Response): void {
-    // Mock response
+  public async delete(req: Request, res: Response): Promise<void> {
+    const { offerId } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      this.sendUnauthorized(res, 'User not authenticated');
+      return;
+    }
+
+    const offer = await this.offerService.findById(offerId as string);
+    if (!offer) {
+      this.sendNotFound(res, 'Offer not found');
+      return;
+    }
+
+    if (offer.authorId.toString() !== userId) {
+      this.sendForbidden(res, 'You can only delete your own offers');
+      return;
+    }
+
+    await this.offerService.deleteById(offerId as string);
     this.sendNoContent(res);
   }
 
-  public getPremiumOffers(req: Request, res: Response): void {
-    const { city } = req.params;
-
-    // Mock response
-    const premiumOffers = [
-      {
-        id: '1',
-        title: `Premium apartment in ${ city}`,
-        description: 'Luxury apartment',
-        createdAt: new Date().toISOString(),
-        city: {
-          name: city,
-          location: { latitude: 48.8566, longitude: 2.3522 },
-        },
-        previewPath: '/preview.jpg',
-        images: ['/img1.jpg', '/img2.jpg', '/img3.jpg', '/img4.jpg', '/img5.jpg', '/img6.jpg'],
-        isPremium: true,
-        isFavorite: false,
-        rating: 5,
-        type: 'apartment',
-        roomsCount: 3,
-        guestsCount: 6,
-        price: 250,
-        conveniences: ['WiFi', 'Breakfast', 'Pool'],
-        author: {
-          name: 'Premium Host',
-          email: 'host@example.com',
-          type: 'pro',
-        },
-        commentsCount: 10,
-        coordinates: { latitude: 48.8566, longitude: 2.3522 },
-      },
-    ];
-
-    this.sendOk(res, premiumOffers);
+  public async getPremiumOffers(req: Request, res: Response): Promise<void> {
+    const city = (req.params.city ?? req.query.city) as string;
+    const premiumOffers = await this.offerService.findPremiumByCity(city);
+    this.sendOk(res, premiumOffers.map((offer) => this.toResponse(offer)));
   }
 
-  public getFavoriteOffers(req: Request, res: Response): void {
-    // Mock response
-    const favoriteOffers: OfferEntity[] = [];
+  public async getFavoriteOffers(req: Request, res: Response): Promise<void> {
+    const userId = req.user?.userId;
 
-    this.sendOk(res, favoriteOffers);
+    if (!userId) {
+      this.sendUnauthorized(res, 'User not authenticated');
+      return;
+    }
+
+    const favoriteOffers = await this.offerService.findFavorites(userId);
+    this.sendOk(res, favoriteOffers.map((offer) => this.toResponse(offer)));
   }
 
-  public addToFavorite(req: Request, res: Response): void {
+  public async toggleFavorite(req: Request, res: Response): Promise<void> {
+    const { offerId, status } = req.params;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      this.sendUnauthorized(res, 'User not authenticated');
+      return;
+    }
+
+    const updatedOffer = status === '1'
+      ? await this.offerService.addToFavorites(offerId as string, userId)
+      : await this.offerService.removeFromFavorites(offerId as string, userId);
+
+    if (!updatedOffer) {
+      this.sendNotFound(res, 'Offer not updated');
+      return;
+    }
+
+    this.sendOk(res, this.toResponse(updatedOffer));
+  }
+
+  public async removeFromFavorite(req: Request, res: Response): Promise<void> {
     const { offerId } = req.params;
+    const userId = req.user?.userId;
 
-    // Mock response
-    this.sendOk(res, { message: 'Offer added to favorites' });
-  }
+    if (!userId) {
+      this.sendUnauthorized(res, 'User not authenticated');
+      return;
+    }
 
-  public removeFromFavorite(req: Request, res: Response): void {
-    const { offerId } = req.params;
-
-    // Mock response
+    await this.offerService.removeFromFavorites(offerId as string, userId);
     this.sendOk(res, { message: 'Offer removed from favorites' });
+  }
+
+  private toResponse(offer: any) {
+    const author = offer.host ?? offer.authorId ?? {};
+    const cityName = typeof offer.city === 'string' ? offer.city : offer.city?.name;
+    const cityLocation = CITY_LOCATION[cityName] ?? { latitude: 0, longitude: 0 };
+
+    return {
+      id: offer.id ?? offer._id?.toString(),
+      title: offer.title,
+      description: offer.description,
+      price: offer.price,
+      rating: offer.rating,
+      isPremium: offer.isPremium,
+      isFavorite: offer.isFavorite,
+      city: {
+        name: cityName,
+        location: cityLocation,
+      },
+      location: offer.location,
+      previewImage: offer.previewImage,
+      type: offer.type,
+      bedrooms: offer.rooms ?? offer.bedrooms,
+      maxAdults: offer.guests ?? offer.maxAdults,
+      goods: offer.goods,
+      host: {
+        name: author?.name,
+        email: author?.email,
+        avatarUrl: author?.avatar ?? author?.avatarUrl,
+        isPro: author?.isPro,
+      },
+      images: offer.images,
+    };
   }
 }

@@ -19,7 +19,7 @@ export class OfferEntity extends defaultClasses.TimeStamps {
   @prop({ trim: true, required: true, minlength: 20, maxlength: 1024 })
   public description!: string;
 
-  @prop({ required: true })
+  @prop({ required: true, default: () => new Date() })
   public postDate!: Date;
 
   @prop({ required: true, enum: ['Paris', 'Cologne', 'Brussels', 'Amsterdam', 'Hamburg', 'Dusseldorf'] })
@@ -30,11 +30,7 @@ export class OfferEntity extends defaultClasses.TimeStamps {
 
   @prop({
     type: () => String,
-    required: true,
-    validate: {
-      validator: (v: string[]) => v.length === 6,
-      message: 'Exactly 6 images are required'
-    }
+    default: [],
   })
   public images!: string[];
 
@@ -54,10 +50,10 @@ export class OfferEntity extends defaultClasses.TimeStamps {
   })
   public type!: OfferType;
 
-  @prop({ required: true, min: 1, max: 8 })
+  @prop({ required: true, min: 1, max: 8, alias: 'bedrooms' })
   public rooms!: number;
 
-  @prop({ required: true, min: 1, max: 10 })
+  @prop({ required: true, min: 1, max: 10, alias: 'maxAdults' })
   public guests!: number;
 
   @prop({ required: true, min: 100, max: 100000 })
@@ -72,7 +68,8 @@ export class OfferEntity extends defaultClasses.TimeStamps {
 
   @prop({
     ref: UserEntity,
-    required: true
+    required: true,
+    alias: 'host'
   })
   public authorId!: Ref<UserEntity>;
 

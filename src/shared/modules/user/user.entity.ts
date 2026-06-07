@@ -15,8 +15,8 @@ export class UserEntity extends defaultClasses.TimeStamps implements User {
   @prop({ unique: true, required: true })
   public email: string;
 
-  @prop({ required: false, default: '' })
-  public avatar: string | undefined;
+  @prop({ required: false, default: '', alias: 'avatarUrl' })
+  public avatar: string;
 
   @prop({ required: true, default: '' })
   public name: string;
@@ -24,14 +24,14 @@ export class UserEntity extends defaultClasses.TimeStamps implements User {
   @prop({ required: true, default: '' })
   private password?: string;
 
-  @prop({required: true, defailt: 'ordinary'})
-  public type: 'ordinary' | 'pro';
+  @prop({ required: false, default: false })
+  public isPro: boolean;
 
-  constructor(userData: User) {
+  constructor(userData: User & { avatarUrl?: string }) {
     super();
 
     this.email = userData.email;
-    this.avatar = userData.avatar;
+    this.avatar = userData.avatar ?? userData.avatarUrl ?? '';
     this.name = userData.name;
   }
 

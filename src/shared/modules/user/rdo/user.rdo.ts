@@ -8,8 +8,8 @@ export class UserRdo {
     email!: string;
 
   @Expose()
-    avatarPath?: string;
+    avatarUrl?: string;
 
   @Expose()
-    type!: 'ordinary' | 'pro';
+    type!: 'default' | 'pro';
 }

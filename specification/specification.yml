@@ -371,7 +371,7 @@ components:
         name: { type: string, minLength: 1, maxLength: 15 }
         email: { type: string, format: email }
         avatarPath: { type: string, description: "URL изображения" }
-        type: { type: string, enum: [ordinary, pro] }
+        type: { type: boolean }
 
     userRegister:
       allOf:

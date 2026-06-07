@@ -1,4 +1,4 @@
 export class UpdateCommentDto {
-  public text?: string;
+  public comment?: string;
   public rating?: number;
 }

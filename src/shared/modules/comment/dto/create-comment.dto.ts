@@ -1,17 +1,19 @@
-import { IsString, Min, Max, IsInt } from 'class-validator';
+import { IsString, Min, Max, IsInt, IsOptional } from 'class-validator';
 
 export class CreateCommentDto {
   @IsString()
-  public text!: string;
+  public comment!: string;
 
   @IsInt()
   @Min(1)
   @Max(5)
   public rating!: number;
 
+  @IsOptional()
   @IsString()
-  public offerId!: string;
+  public offerId?: string;
 
+  @IsOptional()
   @IsString()
-  public userId!: string;
+  public userId?: string;
 }

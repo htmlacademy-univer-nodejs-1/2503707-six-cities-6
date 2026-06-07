@@ -1,2 +1,5 @@
 dist/
 file-upload.middleware.ts
+offer.controller.ts
+comment.controller.ts
+frontend/

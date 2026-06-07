@@ -9,6 +9,7 @@ import { getMongoURI } from '../shared/helpers/index.js';
 import { AppExceptionFilter, ExceptionFilter } from '../shared/libs/filters/index.js';
 import { CommentController, OfferController, UserController } from '../shared/controllers/index.js';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 
 @injectable()
 export class RestApplication {
@@ -49,8 +50,8 @@ export class RestApplication {
   }
 
   private _registerControllers() {
-    this.expressApp.use('/users', this.userController.router);
-    this.expressApp.use('/offers', this.offerController.router);
+    this.expressApp.use('/', this.userController.router);
+    this.expressApp.use('/', this.offerController.router);
     this.expressApp.use('/comments', this.commentController.router);
   }
 
@@ -67,9 +68,13 @@ export class RestApplication {
   }
 
   private _registerMiddleware() {
-    this.expressApp.use(cors());
+    this.expressApp.use(cors({
+      origin: true,
+      credentials: true
+    }));
     this.expressApp.use(express.json());
-    this.logger.info('Middleware registered: express.json()');
+    this.expressApp.use(cookieParser());
+    this.logger.info('Middleware registered: express.json(), cookieParser()');
   }
 
   private _registerExceptionFilters() {

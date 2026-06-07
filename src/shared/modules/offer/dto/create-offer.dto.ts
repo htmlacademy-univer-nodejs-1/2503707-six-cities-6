@@ -1,7 +1,7 @@
 import {
-  IsString, Length, IsDateString, IsEnum, IsBoolean, IsArray, ArrayMinSize, ArrayMaxSize, IsInt, Min, Max, IsNumber, IsOptional, ValidateNested, IsMongoId,
+  IsString, Length, IsDateString, IsEnum, IsBoolean, IsArray, ArrayMinSize, ArrayMaxSize, IsInt, Min, Max, IsNumber, IsOptional, ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { OfferType } from '../../../types/index.js';
 
 export class LocationDto {
@@ -21,60 +21,92 @@ export class CreateOfferDto {
   @Length(20, 1024)
     description!: string;
 
+  @IsOptional()
   @IsDateString()
-    postDate!: string;
+  @Transform(({ value }) => value || new Date().toISOString())
+    postDate?: string;
 
   @IsString()
+  @Transform(({ value }) => typeof value === 'object' && value !== null ? value.name : value)
     city!: string;
 
   @IsString()
     previewImage!: string;
 
+  @IsOptional()
   @IsArray()
-  @ArrayMinSize(6)
   @ArrayMaxSize(6)
   @IsString({ each: true })
-    images!: string[];
+  @Transform(({ value }) => value || [])
+    images?: string[];
 
+  @IsOptional()
   @IsBoolean()
-    isPremium!: boolean;
+  @Transform(({ value }) => value ?? false)
+    isPremium?: boolean;
 
+  @IsOptional()
   @IsBoolean()
-    isFavorite!: boolean;
+  @Transform(({ value }) => value ?? false)
+    isFavorite?: boolean;
 
+  @IsOptional()
   @IsNumber()
   @Min(1)
   @Max(5)
-    rating!: number;
+  @Transform(({ value }) => value || 0)
+    rating?: number;
 
   @IsEnum(OfferType)
+  @Transform(({ value }) => {
+    const typeMap: Record<string, OfferType> = {
+      house: OfferType.Buy,
+      apartment: OfferType.Buy,
+      room: OfferType.Buy,
+      hotel: OfferType.Buy,
+    };
+    return typeMap[value] || value;
+  })
     type!: OfferType;
 
+  @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(8)
-    rooms!: number;
+  @Transform(({ value, obj }) => {
+    const resolved = typeof value !== 'undefined' ? value : obj.bedrooms;
+    return resolved !== undefined ? Number(resolved) : 1;
+  }, { toClassOnly: true })
+    rooms?: number;
 
+  @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(10)
-    guests!: number;
+  @Transform(({ value, obj }) => {
+    const resolved = typeof value !== 'undefined' ? value : obj.maxAdults;
+    return resolved !== undefined ? Number(resolved) : 1;
+  }, { toClassOnly: true })
+    guests?: number;
 
   @IsInt()
   @Min(100)
   @Max(100000)
     price!: number;
 
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
-    goods!: string[];
+  @Transform(({ value }) => value || [])
+    goods?: string[];
 
-  @IsMongoId()
-    authorId!: string;
-
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
-    categories!: string[];
+  @Transform(({ value }) => value || [])
+    categories?: string[];
 
   @ValidateNested()
   @Type(() => LocationDto)

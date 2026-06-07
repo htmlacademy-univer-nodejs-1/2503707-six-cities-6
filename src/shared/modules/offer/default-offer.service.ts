@@ -17,8 +17,8 @@ export class DefaultOfferService implements OfferService, DocumentExistsService 
     @inject(Component.OfferModel) private readonly offerModel: types.ModelType<OfferEntity>
   ) {}
 
-  public async create(dto: CreateOfferDto): Promise<DocumentType<OfferEntity>> {
-    const result = await this.offerModel.create(dto);
+  public async create(dto: CreateOfferDto, authorId: string): Promise<DocumentType<OfferEntity>> {
+    const result = await this.offerModel.create({ ...dto, authorId: authorId });
     this.logger.info(`New offer created: ${dto.title}`);
     return result;
   }
@@ -104,17 +104,21 @@ export class DefaultOfferService implements OfferService, DocumentExistsService 
       .exec();
   }
 
-  public async addToFavorites(offerId: string, userId: string): Promise<void> {
-    await this.offerModel
-      .findByIdAndUpdate(offerId, { isFavorite: true })
+  public async addToFavorites(offerId: string, userId: string): Promise<DocumentType<OfferEntity> | null> {
+    const updatedOffer = await this.offerModel
+      .findByIdAndUpdate(offerId, { isFavorite: true }, { new: true })
+      .populate(['authorId', 'categories'])
       .exec();
     this.logger.info(`Offer ${offerId} added to favorites by user ${userId}`);
+    return updatedOffer;
   }
 
-  public async removeFromFavorites(offerId: string, userId: string): Promise<void> {
-    await this.offerModel
-      .findByIdAndUpdate(offerId, { isFavorite: false })
+  public async removeFromFavorites(offerId: string, userId: string): Promise<DocumentType<OfferEntity> | null> {
+    const updatedOffer = await this.offerModel
+      .findByIdAndUpdate(offerId, { isFavorite: false }, { new: true })
+      .populate(['authorId', 'categories'])
       .exec();
     this.logger.info(`Offer ${offerId} removed from favorites by user ${userId}`);
+    return updatedOffer;
   }
 }
